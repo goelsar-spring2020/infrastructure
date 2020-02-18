@@ -17,6 +17,7 @@ ParameterKey=subnetcidrblock,ParameterValue=${subnet_cidr} \
 ParameterKey=VPCName,ParameterValue=${vpc_name} \
 ParameterKey=AWSRegion,ParameterValue=${aws_name} \
 ParameterKey=VPCcidrblock,ParameterValue=${vpc_cidr} \
+--region ${aws_name} \
 --profile ${profile}
 
 # Waiting for the stack to get created

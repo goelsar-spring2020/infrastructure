@@ -60,7 +60,7 @@
                   "Ref": "subnetcidrblock"
                 },
                 3,
-                8
+                14
               ]
             }
           ]
@@ -98,7 +98,7 @@
                   "Ref": "subnetcidrblock"
                 },
                 3,
-                8
+                14
               ]
             }
           ]
@@ -136,7 +136,7 @@
                   "Ref": "subnetcidrblock"
                 },
                 3,
-                8
+                14
               ]
             }
           ]
