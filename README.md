@@ -16,9 +16,11 @@
 
 ### Instruction to run the shell scripts and create the Stack
 
+  '''
   * Go to the terminal in the specific directory ~/infrastructure/cloudformation
   * Run the shell script by typing the command $ sh csye6225-aws-cf-create-stack.sh
   * Provide the stack Name, VPC Name, AWS region, VPC CIDR Block & Subnet CIDR Block as parameters
+  '''
 
 ### Instruction to run the shell scripts and delete the Stack
 
