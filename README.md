@@ -13,17 +13,18 @@
   * AWS Region -- Name of the AWS Region
   * VPC CIDR Block -- VPC CIDR Block
   * Subnet CIDR Block -- Subnet CIDR Block
+  * Profile Name -- Name of the profile you wish to create stack in
 
 ### Instruction to run the shell scripts and create the Stack
-
-  '''
+```
   * Go to the terminal in the specific directory ~/infrastructure/cloudformation
   * Run the shell script by typing the command $ sh csye6225-aws-cf-create-stack.sh
   * Provide the stack Name, VPC Name, AWS region, VPC CIDR Block & Subnet CIDR Block as parameters
-  '''
+```
 
 ### Instruction to run the shell scripts and delete the Stack
-
+```
     * Go to the terminal in the specific directory ~/infrastructure/cloudformation
     * Run the shell script by typing the command $ sh csye6225-aws-cf-terminate-stack.sh
     * Provide the stack name to be deleted
+```
