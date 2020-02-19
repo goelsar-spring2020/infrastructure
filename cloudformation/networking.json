@@ -25,6 +25,8 @@
         "CidrBlock": {
           "Ref": "VPCcidrblock"
         },
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
         "Tags": [
           {
             "Key": "Name",
