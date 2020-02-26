@@ -4,8 +4,8 @@
 
 #### Files
 
-  * Shell scripts : csye6225-aws-cf-create-stack.sh, csye6225-aws-cf-terminate-stack-sh
-  * Template : networking.json
+  * Shell scripts : csye6225-aws-cf-create-stack.sh, csye6225-aws-cf-terminate-stack-sh, csye6225-aws-cf-create-application-stack.sh
+  * Template : networking.json, application.json
 
   Parameters taken as input are:-
   * Stack Name -- Name of the stack you wish to create
@@ -13,6 +13,8 @@
   * AWS Region -- Name of the AWS Region
   * VPC CIDR Block -- VPC CIDR Block
   * Subnet CIDR Block -- Subnet CIDR Block
+  * aws key name -- Key Name for AWS EC2
+  * AMI Id -- Id of AMI
   * Profile Name -- Name of the profile you wish to create stack in
 
 ### Instruction to run the shell scripts and create the Stack
