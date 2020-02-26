@@ -427,8 +427,8 @@
                   "Effect": "Allow",
                   "Action": ["s3:GetObject", "s3:DeleteObject", "s3:PutObject"],
                   "Resource":[
-                    {"Fn::Join" : [ "-", [ "arn:aws:s3:::",{ "Ref": "myS3Bucket" }] ]},
-                    {"Fn::Join" : [ "-", [ "arn:aws:s3:::",{ "Ref": "myS3Bucket" },"/*"] ]}
+                    {"Fn::Join" : [ "", [ "arn:aws:s3:::",{ "Ref": "myS3Bucket" }] ]},
+                    {"Fn::Join" : [ "", [ "arn:aws:s3:::",{ "Ref": "myS3Bucket" },"/*"] ]}
                   ]
                 }
               ]
@@ -516,9 +516,11 @@
                 "#!/bin/bash \n",
                 "set -e -x \n",
                 "sudo systemctl stop tomcat \n",
+                "sudo echo profile=dev >> /etc/profile.d/envvariable.sh \n",
+                "sudo echo export profile >> /etc/profile.d/envvariable.sh",
                 "sudo echo DBCreationType=update >> /etc/profile.d/envvariable.sh \n",
                 "sudo echo export DBCreationType >> /etc/profile.d/envvariable.sh \n",
-                { "Fn::Sub": "sudo echo username=${dbName} >> /etc/profile.d/envvariable.sh \n" },
+                { "Fn::Sub": "sudo echo username=${dbUserName} >> /etc/profile.d/envvariable.sh \n" },
                 "sudo echo export username >> /etc/profile.d/envvariable.sh \n",
                 { "Fn::Sub": "sudo echo password=${dbuserPassword} >> /etc/profile.d/envvariable.sh \n" },
                 "sudo echo export password >> /etc/profile.d/envvariable.sh \n",
