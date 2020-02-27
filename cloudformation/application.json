@@ -551,6 +551,22 @@
                     ]
                   ]
                 },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "sudo echo rdsEndpoint=",
+                      {
+                        "Fn::GetAtt": [
+                          "myRDS",
+                          "Endpoint.Address"
+                          ]
+                      },
+                      ">> /etc/profile.d/envvariable.sh \n"
+                    ]
+                  ]
+                },
+                "sudo echo export rdsEndpoint >> /etc/profile.d/envvariable.sh \n",
                 "sudo echo export awsRDS >> /etc/profile.d/envvariable.sh \n",
                 "sudo echo export bucketName >> /etc/profile.d/envvariable.sh \n",
               ]
