@@ -467,6 +467,109 @@
             }
          }
       },
+      "myS3Bucket":{
+         "Type":"AWS::S3::Bucket",
+         "Properties":{
+            "AccessControl":"Private",
+            "BucketEncryption":{
+               "ServerSideEncryptionConfiguration":[
+                  {
+                     "ServerSideEncryptionByDefault":{
+                        "SSEAlgorithm":"AES256"
+                     }
+                  }
+               ]
+            },
+            "LifecycleConfiguration":{
+               "Rules":[
+                  {
+                     "Id":"ShiftIn30Days",
+                     "Status":"Enabled",
+                     "Transition":{
+                        "TransitionInDays":"30",
+                        "StorageClass":"STANDARD_IA"
+                     }
+                  }
+               ]
+            }
+         }
+      },
+      "CodeDeployEC2S3":{
+         "Type":"AWS::IAM::ManagedPolicy",
+         "Properties":{
+            "ManagedPolicyName":"CodeDeploy-EC2-S3",
+            "PolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Action":[
+                        "s3:Get*",
+                        "s3:List*"
+                     ],
+                     "Effect":"Allow",
+                     "Resource":[
+                        {
+                           "Fn::Join":[
+                              "",
+                              [
+                                 "arn:aws:s3:::",
+                                 {
+                                    "Ref":"myBucketNameForWebApp"
+                                 },
+                                 "/*"
+                              ]
+                           ]
+                        }
+                     ]
+                  }
+               ]
+            }
+         }
+      },"AccessAttachmentToS3Bucket":{
+         "Type":"AWS::IAM::ManagedPolicy",
+         "Properties":{
+            "ManagedPolicyName":"Access-Attachment-To-S3-Bucket",
+            "Description":"Policy for uploading attachments into S3",
+            "PolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Action":[
+                        "s3:GetObject",
+                        "s3:DeleteObject",
+                        "s3:PutObject"
+                     ],
+                     "Effect":"Allow",
+                     "Resource":[
+                        {
+                           "Fn::Join":[
+                              "",
+                              [
+                                 "arn:aws:s3:::",
+                                 {
+                                    "Ref":"myS3Bucket"
+                                 }
+                              ]
+                           ]
+                        },
+                        {
+                           "Fn::Join":[
+                              "",
+                              [
+                                 "arn:aws:s3:::",
+                                 {
+                                    "Ref":"myS3Bucket"
+                                 },
+                                 "/*"
+                              ]
+                           ]
+                        }
+                     ]
+                  }
+               ]
+            }
+         }
+      },
       "circleciec2ami":{
          "Properties":{
             "PolicyDocument":{
@@ -659,8 +762,20 @@
          "Type":"AWS::IAM::Policy"
       },
       "CodeDeployEC2ServiceRole":{
+         "Type":"AWS::IAM::Role",
          "Properties":{
+            "RoleName":"CodeDeployEC2ServiceRole",
+            "ManagedPolicyArns":[
+               {
+                  "Ref":"CodeDeployEC2S3"
+               },
+               {
+                  "Ref":"AccessAttachmentToS3Bucket"
+               },
+               "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+            ],
             "AssumeRolePolicyDocument":{
+               "Version":"2012-10-17",
                "Statement":[
                   {
                      "Action":[
@@ -674,84 +789,8 @@
                      }
                   }
                ],
-               "Version":"2012-10-17"
-            },
-            "Path":"/",
-            "Policies":[
-               {
-                  "PolicyDocument":{
-                     "Statement":[
-                        {
-                           "Action":[
-                              "s3:GetObject",
-                              "s3:DeleteObject",
-                              "s3:PutObject"
-                           ],
-                           "Effect":"Allow",
-                           "Resource":[
-                              {
-                                 "Fn::Join":[
-                                    "",
-                                    [
-                                       "arn:aws:s3:::",
-                                       {
-                                          "Ref":"myS3Bucket"
-                                       }
-                                    ]
-                                 ]
-                              },
-                              {
-                                 "Fn::Join":[
-                                    "",
-                                    [
-                                       "arn:aws:s3:::",
-                                       {
-                                          "Ref":"myS3Bucket"
-                                       },
-                                       "/*"
-                                    ]
-                                 ]
-                              }
-                           ]
-                        }
-                     ],
-                     "Version":"2012-10-17"
-                  },
-                  "PolicyName":"WebAppS3"
-               },
-               {
-                  "PolicyDocument":{
-                     "Statement":[
-                        {
-                           "Action":[
-                              "s3:Get*",
-                              "s3:List*"
-                           ],
-                           "Effect":"Allow",
-                           "Resource":[
-                              {
-                                 "Fn::Join":[
-                                    "",
-                                    [
-                                       "arn:aws:s3:::",
-                                       {
-                                          "Ref":"myBucketNameForWebApp"
-                                       },
-                                       "/*"
-                                    ]
-                                 ]
-                              }
-                           ]
-                        }
-                     ],
-                     "Version":"2012-10-17"
-                  },
-                  "PolicyName":"CodeDeploy-EC2-S3"
-               }
-            ],
-            "RoleName":"CodeDeployEC2ServiceRole"
-         },
-         "Type":"AWS::IAM::Role"
+            }
+         }
       },
       "CodeDeployServiceRole":{
          "Properties":{
@@ -777,33 +816,6 @@
             "RoleName":"CodeDeployServiceRole"
          },
          "Type":"AWS::IAM::Role"
-      },
-      "myS3Bucket":{
-         "Type":"AWS::S3::Bucket",
-         "Properties":{
-            "AccessControl":"Private",
-            "BucketEncryption":{
-               "ServerSideEncryptionConfiguration":[
-                  {
-                     "ServerSideEncryptionByDefault":{
-                        "SSEAlgorithm":"AES256"
-                     }
-                  }
-               ]
-            },
-            "LifecycleConfiguration":{
-               "Rules":[
-                  {
-                     "Id":"ShiftIn30Days",
-                     "Status":"Enabled",
-                     "Transition":{
-                        "TransitionInDays":"30",
-                        "StorageClass":"STANDARD_IA"
-                     }
-                  }
-               ]
-            }
-         }
       },
       "myDBSubnetGroup":{
          "Type":"AWS::RDS::DBSubnetGroup",
