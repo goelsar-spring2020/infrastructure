@@ -100,10 +100,6 @@
          "Description":"Code Deploy Group Name",
          "Type":"String"
       },
-      "CERTIFICATEARN": {
-         "Description": "AWS Certificate Manager Certificate ARN",
-         "Type": "String"
-      },
       "myBucketNameForWebApp":{
          "Default":"codedeploy.sarthakgoel.me",
          "Description":"Bucket name for storing application",
@@ -525,14 +521,6 @@
       "ELBListener": {
          "Type": "AWS::ElasticLoadBalancingV2::Listener",
          "Properties": {
-            "Certificates": [
-               {
-                  "CertificateArn": 
-                  {
-                     "Ref": "CERTIFICATEARN"
-                  }
-               }
-            ],
             "LoadBalancerArn": {
                "Ref": "ElasticLoadBalancer"
             },
@@ -615,11 +603,10 @@
             }
          }
       },
-      // Creating the Launch Configuration
       "AutoScalingEC2Instance": {
          "Type": "AWS::AutoScaling::LaunchConfiguration",
          "DependsOn": [
-            "myRDS",
+            "myRDS"
          ],
          "Properties": {
             "ImageId": {
@@ -632,7 +619,7 @@
             "SecurityGroups": [
                {
                   "Fn::GetAtt": [
-                     "SecurityGroupWB",
+                     "applicationSecurityGroup",
                      "GroupId"
                   ]
                }
@@ -687,7 +674,6 @@
             }
          }
       },
-      //Auto Scaling Group
       "WebServerGroup": {
          "Type": "AWS::AutoScaling::AutoScalingGroup",
          "Properties": {
