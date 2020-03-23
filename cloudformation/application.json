@@ -100,6 +100,10 @@
          "Description":"Code Deploy Group Name",
          "Type":"String"
       },
+      "CERTIFICATEARN": {
+         "Description": "AWS Certificate Manager Certificate ARN",
+         "Type": "String"
+      },
       "myBucketNameForWebApp":{
          "Default":"codedeploy.sarthakgoel.me",
          "Description":"Bucket name for storing application",
@@ -494,6 +498,91 @@
             }
          }
       },
+      "ElasticLoadBalancer": {
+         "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+         "Properties": {
+            "Name": "csye6225-load-balancer",
+            "Scheme": "internet-facing",
+            "Type": "application",
+            "SecurityGroups": [
+               {
+                  "Ref": "applicationSecurityGroup"
+               }
+            ],
+            "Subnets": [
+               {
+                  "Ref":"myPublicSubnet1"
+               },
+               {
+                  "Ref":"myPublicSubnet2"
+               },
+               {
+                  "Ref":"myPublicSubnet3"
+               }
+            ]
+         }
+      },
+      "ELBListener": {
+         "Type": "AWS::ElasticLoadBalancingV2::Listener",
+         "Properties": {
+            "Certificates": [
+               {
+                  "CertificateArn": 
+                  {
+                     "Ref": "CERTIFICATEARN"
+                  }
+               }
+            ],
+            "LoadBalancerArn": {
+               "Ref": "ElasticLoadBalancer"
+            },
+            "DefaultActions": [
+               {
+                  "Type": "forward",
+                  "TargetGroupArn": {
+                     "Ref": "ELBTargetGroup"
+                  }
+               }
+            ],
+            "Port": "443",
+            "Protocol": "HTTPS"
+         }
+      },
+      "ELBTargetGroup": {
+         "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+         "Properties": {
+            "HealthCheckIntervalSeconds": 10,
+            "HealthCheckTimeoutSeconds": 5,
+            "UnhealthyThresholdCount": 2,
+            "HealthyThresholdCount": 2,
+            "HealthCheckPath": "/health",
+            "TargetGroupAttributes": [
+               {
+                  "Key": "deregistration_delay.timeout_seconds",
+                  "Value": "20"
+               }
+            ],
+            "Name": {
+               "Fn::Join": [
+                  "-",
+                  [
+                     {
+                        "Ref": "AWS::StackName"
+                     },
+                     "TargetGroup"
+                  ]
+               ]
+            },
+            "Port": 80,
+            "Protocol": "HTTP",
+            "VpcId": {
+               "Ref":"myVPC"
+            }
+         },
+         "DependsOn": [
+            "ElasticLoadBalancer"
+         ]
+      },
       "CodeDeployEC2S3":{
          "Type":"AWS::IAM::ManagedPolicy",
          "Properties":{
@@ -525,7 +614,151 @@
                ]
             }
          }
-      },"AccessAttachmentToS3Bucket":{
+      },
+      // Creating the Launch Configuration
+      "AutoScalingEC2Instance": {
+         "Type": "AWS::AutoScaling::LaunchConfiguration",
+         "DependsOn": [
+            "myRDS",
+         ],
+         "Properties": {
+            "ImageId": {
+               "Ref":"AMI"
+            },
+            "InstanceType": "t2.micro",
+            "IamInstanceProfile": {
+               "Ref":"myEC2InstanceProfile"
+            },
+            "SecurityGroups": [
+               {
+                  "Fn::GetAtt": [
+                     "SecurityGroupWB",
+                     "GroupId"
+                  ]
+               }
+            ],
+            "KeyName": {
+               "Ref":"keyname"
+            },
+            "UserData": {
+               "Fn::Base64": {
+                  "Fn::Join": [
+                     "\n",
+                     [
+                        "#!/bin/bash -xe",
+                        "echo export SPRING_PROFILE=dev>>/etc/profile.d/envvariable.sh",
+                        "echo export DB_USERNAME=csye6225master>>/etc/profile.d/envvariable.sh",
+                        "echo export DB_PASSWORD=csye6225password>>/etc/profile.d/envvariable.sh",
+                        {
+                           "Fn::Join": [
+                              "",
+                              [
+                                 "echo export WEBAPP_BUCKETNAME=",
+                                 {
+                                    "Ref": "myBucketNameForWebApp"
+                                 },
+                                 ">>/etc/profile.d/envvariable.sh"
+                              ]
+                           ]
+                        },
+                        {
+                           "Fn::Join": [
+                              "",
+                              [
+                                 "echo export DB_ENDPOINT=",
+                                 {
+                                    "Fn::GetAtt": [
+                                       "myRDS",
+                                       "Endpoint.Address"
+                                    ]
+                                 },
+                                 ">>/etc/profile.d/envvariable.sh"
+                              ]
+                           ]
+                        },
+                        "chmod 0755 /etc/profile.d/envvariable.sh",
+                        "source /etc/profile.d/envvariable.sh",
+                        "mkdir /home/ubuntu/webapp",
+                        "chown ubuntu:ubuntu -R /home/ubuntu/webapp",
+                        "iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to-destination :8080"
+                     ]
+                  ]
+               }
+            }
+         }
+      },
+      //Auto Scaling Group
+      "WebServerGroup": {
+         "Type": "AWS::AutoScaling::AutoScalingGroup",
+         "Properties": {
+            "AutoScalingGroupName": "csye6225ASG",
+            "Cooldown": "60",
+            "DesiredCapacity": "3",
+            "LaunchConfigurationName": {
+               "Ref": "AutoScalingEC2Instance"
+            },
+            "MaxSize": "10",
+            "MinSize": "3",
+            "TargetGroupARNs": [
+               {
+                  "Ref": "ELBTargetGroup"
+               }
+            ],
+            "Tags": [
+               {
+                  "Key": "Name",
+                  "Value": {
+                     "Fn::Join":[
+                        "-",
+                        [
+                           {
+                              "Ref":"myEC2Name"
+                           },
+                           {
+                              "Ref":"VPCName"
+                           }
+                        ]
+                     ]
+                  },
+                  "PropagateAtLaunch": "True"
+               }
+            ],
+            "VPCZoneIdentifier": [
+               {
+                  "Ref":"myPublicSubnet1"
+               },
+               {
+                  "Ref":"myPublicSubnet2"
+               },
+               {
+                  "Ref":"myPublicSubnet3"
+               }
+            ]
+         }
+      },
+      "WebServerScaleUpPolicy": {
+         "Type": "AWS::AutoScaling::ScalingPolicy",
+         "Properties": {
+            "AdjustmentType": "ChangeInCapacity",
+            "AutoScalingGroupName": {
+               "Ref": "WebServerGroup"
+            },
+            "Cooldown": "10",
+            "ScalingAdjustment": "1"
+         }
+      },
+      "WebServerScaleDownPolicy": {
+         "Type": "AWS::AutoScaling::ScalingPolicy",
+         "Properties": {
+            "AdjustmentType": "ChangeInCapacity",
+            "AutoScalingGroupName": {
+               "Ref": "WebServerGroup"
+            },
+            "Cooldown": "10",
+            "ScalingAdjustment": "-1"
+         }
+      },
+      "AccessAttachmentToS3Bucket":{
          "Type":"AWS::IAM::ManagedPolicy",
          "Properties":{
             "ManagedPolicyName":"Access-Attachment-To-S3-Bucket",
@@ -1028,6 +1261,11 @@
                ]
             },
             "DeploymentConfigName": "CodeDeployDefault.AllAtOnce",
+            "AutoScalingGroups": [
+               {
+                  "Ref": "WebServerGroup"
+               }
+            ],
             "DeploymentGroupName": {
                "Ref": "DEPGROUPNAME"
             },
