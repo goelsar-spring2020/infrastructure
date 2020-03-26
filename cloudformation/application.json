@@ -104,6 +104,18 @@
          "Default":"codedeploy.sarthakgoel.me",
          "Description":"Bucket name for storing application",
          "Type":"String"
+      },
+      "HostedZoneId":{
+         "Type":"String",
+         "Default":"Z2NYNYWX36YOMO"
+      },
+      "DomainName":{
+         "Type":"String",
+         "Default":"prod.sarthakgoel.me"
+      },
+      "VolumeSize":{
+         "Type":"String",
+         "Default":"20"
       }
    },
    "Resources":{
@@ -395,6 +407,42 @@
             }
          }
       },
+      "loadbalancerSecurityGroup": {
+         "Type": "AWS::EC2::SecurityGroup",
+         "Properties": {
+            "GroupName": "LoadBalancer-Security-Group",
+            "GroupDescription": "Enable HTTPS via port 8080",
+            "VpcId": {
+               "Ref": "myVPC"
+            },
+            "SecurityGroupIngress": [
+               {
+                  "IpProtocol": "tcp",
+                  "FromPort": 80,
+                  "ToPort": 80,
+                  "CidrIp": "0.0.0.0/0"
+               },
+               {
+                  "IpProtocol": "tcp",
+                  "FromPort": 443,
+                  "ToPort": 443,
+                  "CidrIp": "0.0.0.0/0"
+               },
+               {
+                  "IpProtocol": "tcp",
+                  "FromPort": 8080,
+                  "ToPort": 8080,
+                  "CidrIp": "0.0.0.0/0"
+               },
+               {
+                  "IpProtocol": "tcp",
+                  "FromPort": 22,
+                  "ToPort": 22,
+                  "CidrIp": "0.0.0.0/0"
+               }
+            ]
+         }
+      },
       "applicationSecurityGroup":{
          "Type":"AWS::EC2::SecurityGroup",
          "Properties":{
@@ -403,27 +451,20 @@
             "SecurityGroupIngress":[
                {
                   "IpProtocol":"tcp",
-                  "FromPort":"22",
-                  "ToPort":"22",
+                  "FromPort":22,
+                  "ToPort":22,
                   "CidrIp":"0.0.0.0/0"
                },
                {
                   "IpProtocol":"tcp",
-                  "FromPort":"80",
-                  "ToPort":"80",
-                  "CidrIp":"0.0.0.0/0"
-               },
-               {
-                  "IpProtocol":"tcp",
-                  "FromPort":"443",
-                  "ToPort":"443",
-                  "CidrIp":"0.0.0.0/0"
-               },
-               {
-                  "FromPort":"8080",
-                  "IpProtocol":"tcp",
-                  "ToPort":"8080",
-                  "CidrIp":"0.0.0.0/0"
+                  "FromPort":8080,
+                  "ToPort":8080,
+                  "SourceSecurityGroupId": {
+                     "Fn::GetAtt": [
+                        "loadbalancerSecurityGroup",
+                        "GroupId"
+                     ]
+                  }
                }
             ],
             "Tags":[
@@ -494,15 +535,42 @@
             }
          }
       },
-      "ElasticLoadBalancer": {
+      "DNSRecordSet":{
+         "Type":"AWS::Route53::RecordSet",
+         "Properties":{
+            "Name":{
+               "Ref":"DomainName"
+            },
+            "HostedZoneId":{
+               "Ref":"HostedZoneId"
+            },
+            "AliasTarget":{
+               "HostedZoneId":{
+                  "Fn::GetAtt":[
+                     "myLoadBalancer",
+                     "CanonicalHostedZoneID"
+                  ]
+               },
+               "DNSName":{
+                  "Fn::GetAtt":[
+                     "myLoadBalancer",
+                     "DNSName"
+                  ]
+               }
+            },
+            "Type":"A"
+         }
+      },
+      "myLoadBalancer": {
          "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
          "Properties": {
             "Name": "csye6225-load-balancer",
+            "IpAddressType":"ipv4",
             "Scheme": "internet-facing",
             "Type": "application",
             "SecurityGroups": [
                {
-                  "Ref": "applicationSecurityGroup"
+                  "Ref": "loadbalancerSecurityGroup"
                }
             ],
             "Subnets": [
@@ -518,32 +586,38 @@
             ]
          }
       },
-      "ELBListener": {
+      "myListener": {
          "Type": "AWS::ElasticLoadBalancingV2::Listener",
          "Properties": {
             "LoadBalancerArn": {
-               "Ref": "ElasticLoadBalancer"
+               "Ref": "myLoadBalancer"
             },
             "DefaultActions": [
                {
                   "Type": "forward",
                   "TargetGroupArn": {
-                     "Ref": "ELBTargetGroup"
+                     "Ref": "TargetGroup"
                   }
                }
             ],
-            "Port": "443",
-            "Protocol": "HTTPS"
+            "Port": 80,
+            "Protocol": "HTTP"
          }
       },
-      "ELBTargetGroup": {
+      "TargetGroup": {
          "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
          "Properties": {
-            "HealthCheckIntervalSeconds": 10,
-            "HealthCheckTimeoutSeconds": 5,
-            "UnhealthyThresholdCount": 2,
-            "HealthyThresholdCount": 2,
-            "HealthCheckPath": "/health",
+            "HealthCheckIntervalSeconds": 30,
+            "HealthCheckPath": "/",
+            "HealthCheckPort":"8080",
+            "HealthCheckProtocol":"HTTP",
+            "HealthCheckTimeoutSeconds": 7,
+            "HealthyThresholdCount": 3,
+            "Name":"TargetGroup",
+            "Port":8080,
+            "Protocol": "HTTP",
+            "TargetType":"instance",
+            "UnhealthyThresholdCount": 5,
             "TargetGroupAttributes": [
                {
                   "Key": "deregistration_delay.timeout_seconds",
@@ -561,14 +635,15 @@
                   ]
                ]
             },
-            "Port": 80,
-            "Protocol": "HTTP",
             "VpcId": {
                "Ref":"myVPC"
+            },
+            "Matcher":{
+               "HttpCode":"401,200"
             }
          },
          "DependsOn": [
-            "ElasticLoadBalancer"
+            "myLoadBalancer"
          ]
       },
       "CodeDeployEC2S3":{
@@ -603,7 +678,7 @@
             }
          }
       },
-      "AutoScalingEC2Instance": {
+      "asglaunchconfig": {
          "Type": "AWS::AutoScaling::LaunchConfiguration",
          "DependsOn": [
             "myRDS"
@@ -613,56 +688,92 @@
                "Ref":"AMI"
             },
             "InstanceType": "t2.micro",
-            "IamInstanceProfile": {
-               "Ref":"myEC2InstanceProfile"
-            },
-            "SecurityGroups": [
-               {
-                  "Fn::GetAtt": [
-                     "applicationSecurityGroup",
-                     "GroupId"
-                  ]
-               }
-            ],
             "KeyName": {
                "Ref":"keyname"
             },
-            "UserData": {
-               "Fn::Base64": {
-                  "Fn::Join": [
-                     "\n",
+            "IamInstanceProfile": {
+               "Ref":"myEC2InstanceProfile"
+            },
+            "AssociatePublicIpAddress":true,
+            "BlockDeviceMappings":[
+               {
+                  "DeviceName":"/dev/sdm",
+                  "Ebs":{
+                     "VolumeType":"gp2",
+                     "DeleteOnTermination":"true",
+                     "VolumeSize":{
+                        "Ref":"VolumeSize"
+                     }
+                  }
+               }
+            ],
+            "UserData":{
+               "Fn::Base64":{
+                  "Fn::Join":[
+                     "",
                      [
-                        "#!/bin/bash -xe",
-                        "echo export SPRING_PROFILE=dev>>/etc/profile.d/envvariable.sh",
-                        "echo export DB_USERNAME=csye6225master>>/etc/profile.d/envvariable.sh",
-                        "echo export DB_PASSWORD=csye6225password>>/etc/profile.d/envvariable.sh",
+                        "#!/bin/bash \n",
+                        "set -e -x \n",
+                        "sudo systemctl stop tomcat \n",
+                        "sudo echo profile=dev >> /etc/profile.d/envvariable.sh \n",
+                        "sudo echo export profile >> /etc/profile.d/envvariable.sh \n",
+                        "sudo echo DBCreationType=update >> /etc/profile.d/envvariable.sh \n",
+                        "sudo echo export DBCreationType >> /etc/profile.d/envvariable.sh \n",
                         {
-                           "Fn::Join": [
-                              "",
-                              [
-                                 "echo export WEBAPP_BUCKETNAME=",
-                                 {
-                                    "Ref": "myBucketNameForWebApp"
-                                 },
-                                 ">>/etc/profile.d/envvariable.sh"
-                              ]
-                           ]
+                           "Fn::Sub":"sudo echo username=${dbUserName} >> /etc/profile.d/envvariable.sh \n"
                         },
+                        "sudo echo export username >> /etc/profile.d/envvariable.sh \n",
                         {
-                           "Fn::Join": [
+                           "Fn::Sub":"sudo echo password=${dbuserPassword} >> /etc/profile.d/envvariable.sh \n"
+                        },
+                        "sudo echo export password >> /etc/profile.d/envvariable.sh \n",
+                        {
+                           "Fn::Join":[
                               "",
                               [
-                                 "echo export DB_ENDPOINT=",
+                                 "echo awsRDS=jdbc:mysql://",
                                  {
-                                    "Fn::GetAtt": [
+                                    "Fn::GetAtt":[
                                        "myRDS",
                                        "Endpoint.Address"
                                     ]
                                  },
-                                 ">>/etc/profile.d/envvariable.sh"
+                                 {
+                                    "Fn::Sub":":3306/${dbName} >> /etc/profile.d/envvariable.sh \n"
+                                 }
                               ]
                            ]
                         },
+                        {
+                           "Fn::Join":[
+                              "",
+                              [
+                                 "sudo echo bucketName=",
+                                 {
+                                    "Ref":"myS3Bucket"
+                                 },
+                                 ">> /etc/profile.d/envvariable.sh \n"
+                              ]
+                           ]
+                        },
+                        {
+                           "Fn::Join":[
+                              "",
+                              [
+                                 "sudo echo rdsEndpoint=",
+                                 {
+                                    "Fn::GetAtt":[
+                                       "myRDS",
+                                       "Endpoint.Address"
+                                    ]
+                                 },
+                                 ">> /etc/profile.d/envvariable.sh \n"
+                              ]
+                           ]
+                        },
+                        "sudo echo export rdsEndpoint >> /etc/profile.d/envvariable.sh \n",
+                        "sudo echo export awsRDS >> /etc/profile.d/envvariable.sh \n",
+                        "sudo echo export bucketName >> /etc/profile.d/envvariable.sh \n",
                         "chmod 0755 /etc/profile.d/envvariable.sh",
                         "source /etc/profile.d/envvariable.sh",
                         "mkdir /home/ubuntu/webapp",
@@ -671,23 +782,28 @@
                      ]
                   ]
                }
-            }
+            },
+            "SecurityGroups": [
+               {
+                  "Ref": "applicationSecurityGroup"
+               }
+            ],
          }
       },
       "WebServerGroup": {
          "Type": "AWS::AutoScaling::AutoScalingGroup",
          "Properties": {
-            "AutoScalingGroupName": "csye6225ASG",
-            "Cooldown": "60",
-            "DesiredCapacity": "3",
+            "AutoScalingGroupName": "asglaunchconfig",
+            "Cooldown": 60,
+            "DesiredCapacity": "2",
             "LaunchConfigurationName": {
-               "Ref": "AutoScalingEC2Instance"
+               "Ref": "asglaunchconfig"
             },
-            "MaxSize": "10",
-            "MinSize": "3",
+            "MaxSize": "5",
+            "MinSize": "2",
             "TargetGroupARNs": [
                {
-                  "Ref": "ELBTargetGroup"
+                  "Ref": "TargetGroup"
                }
             ],
             "Tags": [
@@ -729,7 +845,7 @@
             "AutoScalingGroupName": {
                "Ref": "WebServerGroup"
             },
-            "Cooldown": "10",
+            "Cooldown": 60,
             "ScalingAdjustment": "1"
          }
       },
@@ -740,8 +856,60 @@
             "AutoScalingGroupName": {
                "Ref": "WebServerGroup"
             },
-            "Cooldown": "10",
+            "Cooldown": 60,
             "ScalingAdjustment": "-1"
+         }
+      },
+      "CPUAlarmHigh": {
+         "Type": "AWS::CloudWatch::Alarm",
+         "Properties": {
+            "AlarmDescription": "Scale-up if CPU > 5% for 5 minutes",
+            "MetricName": "CPUUtilization",
+            "Namespace": "AWS/EC2",
+            "Statistic": "Average",
+            "Period": 300,
+            "EvaluationPeriods": 2,
+            "Threshold": 5,
+            "AlarmActions": [
+               {
+                  "Ref": "WebServerScaleUpPolicy"
+               }
+            ],
+            "Dimensions": [
+               {
+                  "Name": "AutoScalingGroupName",
+                  "Value": {
+                     "Ref": "WebServerGroup"
+                  }
+               }
+            ],
+            "ComparisonOperator": "GreaterThanThreshold"
+         }
+      },
+      "CPUAlarmLow": {
+         "Type": "AWS::CloudWatch::Alarm",
+         "Properties": {
+            "AlarmDescription": "Scale-down if CPU < 3% for 5 minutes",
+            "MetricName": "CPUUtilization",
+            "Namespace": "AWS/EC2",
+            "Statistic": "Average",
+            "Period": 300,
+            "EvaluationPeriods": 2,
+            "Threshold": 3,
+            "AlarmActions": [
+               {
+                  "Ref": "WebServerScaleDownPolicy"
+               }
+            ],
+            "Dimensions": [
+               {
+                  "Name": "AutoScalingGroupName",
+                  "Value": {
+                     "Ref": "WebServerGroup"
+                  }
+               }
+            ],
+            "ComparisonOperator": "LessThanThreshold"
          }
       },
       "AccessAttachmentToS3Bucket":{
@@ -1083,137 +1251,6 @@
             "AllocatedStorage":"10"
          }
       },
-      "myEC2":{
-         "Type":"AWS::EC2::Instance",
-         "Properties":{
-            "ImageId":{
-               "Ref":"AMI"
-            },
-            "InstanceType":{
-               "Ref":"ec2InstanceType"
-            },
-            "BlockDeviceMappings":[
-               {
-                  "DeviceName":"/dev/sda1",
-                  "Ebs":{
-                     "VolumeSize":"20",
-                     "VolumeType":"gp2",
-                     "DeleteOnTermination":true
-                  }
-               }
-            ],
-            "KeyName":{
-               "Ref":"keyname"
-            },
-            "NetworkInterfaces":[
-               {
-                  "AssociatePublicIpAddress":true,
-                  "DeviceIndex":"0",
-                  "DeleteOnTermination":true,
-                  "SubnetId":{
-                     "Ref":"myPublicSubnet3"
-                  },
-                  "GroupSet":[
-                     {
-                        "Ref":"applicationSecurityGroup"
-                     }
-                  ]
-               }
-            ],
-            "UserData":{
-               "Fn::Base64":{
-                  "Fn::Join":[
-                     "",
-                     [
-                        "#!/bin/bash \n",
-                        "set -e -x \n",
-                        "sudo systemctl stop tomcat \n",
-                        "sudo echo profile=dev >> /etc/profile.d/envvariable.sh \n",
-                        "sudo echo export profile >> /etc/profile.d/envvariable.sh \n",
-                        "sudo echo DBCreationType=update >> /etc/profile.d/envvariable.sh \n",
-                        "sudo echo export DBCreationType >> /etc/profile.d/envvariable.sh \n",
-                        {
-                           "Fn::Sub":"sudo echo username=${dbUserName} >> /etc/profile.d/envvariable.sh \n"
-                        },
-                        "sudo echo export username >> /etc/profile.d/envvariable.sh \n",
-                        {
-                           "Fn::Sub":"sudo echo password=${dbuserPassword} >> /etc/profile.d/envvariable.sh \n"
-                        },
-                        "sudo echo export password >> /etc/profile.d/envvariable.sh \n",
-                        {
-                           "Fn::Join":[
-                              "",
-                              [
-                                 "echo awsRDS=jdbc:mysql://",
-                                 {
-                                    "Fn::GetAtt":[
-                                       "myRDS",
-                                       "Endpoint.Address"
-                                    ]
-                                 },
-                                 {
-                                    "Fn::Sub":":3306/${dbName} >> /etc/profile.d/envvariable.sh \n"
-                                 }
-                              ]
-                           ]
-                        },
-                        {
-                           "Fn::Join":[
-                              "",
-                              [
-                                 "sudo echo bucketName=",
-                                 {
-                                    "Ref":"myS3Bucket"
-                                 },
-                                 ">> /etc/profile.d/envvariable.sh \n"
-                              ]
-                           ]
-                        },
-                        {
-                           "Fn::Join":[
-                              "",
-                              [
-                                 "sudo echo rdsEndpoint=",
-                                 {
-                                    "Fn::GetAtt":[
-                                       "myRDS",
-                                       "Endpoint.Address"
-                                    ]
-                                 },
-                                 ">> /etc/profile.d/envvariable.sh \n"
-                              ]
-                           ]
-                        },
-                        "sudo echo export rdsEndpoint >> /etc/profile.d/envvariable.sh \n",
-                        "sudo echo export awsRDS >> /etc/profile.d/envvariable.sh \n",
-                        "sudo echo export bucketName >> /etc/profile.d/envvariable.sh \n"
-                     ]
-                  ]
-               }
-            },
-            "IamInstanceProfile":{
-               "Ref":"myEC2InstanceProfile"
-            },
-            "Tags":[
-               {
-                  "Key":"Name",
-                  "Value":{
-                     "Fn::Join":[
-                        "-",
-                        [
-                           {
-                              "Ref":"myEC2Name"
-                           },
-                           {
-                              "Ref":"VPCName"
-                           }
-                        ]
-                     ]
-                  }
-               }
-            ]
-         }
-      },
       "myEC2InstanceProfile": {
          "Properties": {
             "Path": "/",
@@ -1252,6 +1289,18 @@
                   "Ref": "WebServerGroup"
                }
             ],
+            "LoadBalancerInfo":{
+               "TargetGroupInfoList":[
+                  {
+                     "Name":{
+                        "Fn::GetAtt":[
+                           "TargetGroup",
+                           "TargetGroupName"
+                        ]
+                     }
+                  }
+               ]
+            },
             "DeploymentGroupName": {
                "Ref": "DEPGROUPNAME"
             },
@@ -1278,6 +1327,12 @@
                   }
                }
             ],
+            "AutoRollbackConfiguration":{
+               "Enabled":"true",
+               "Events":[
+                  "DEPLOYMENT_FAILURE"
+               ]
+            },
             "ServiceRoleArn": {
                "Fn::GetAtt": [
                   "CodeDeployServiceRole",
