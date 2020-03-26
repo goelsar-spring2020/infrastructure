@@ -624,17 +624,6 @@
                   "Value": "20"
                }
             ],
-            "Name": {
-               "Fn::Join": [
-                  "-",
-                  [
-                     {
-                        "Ref": "AWS::StackName"
-                     },
-                     "TargetGroup"
-                  ]
-               ]
-            },
             "VpcId": {
                "Ref":"myVPC"
             },
@@ -794,7 +783,7 @@
          "Type": "AWS::AutoScaling::AutoScalingGroup",
          "Properties": {
             "AutoScalingGroupName": "asglaunchconfig",
-            "Cooldown": 60,
+            "Cooldown": 300,
             "DesiredCapacity": 2,
             "LaunchConfigurationName": {
                "Ref": "asglaunchconfig"
@@ -845,7 +834,7 @@
             "AutoScalingGroupName": {
                "Ref": "WebServerGroup"
             },
-            "Cooldown": 60,
+            "Cooldown": 300,
             "ScalingAdjustment": 1
          }
       },
@@ -856,8 +845,8 @@
             "AutoScalingGroupName": {
                "Ref": "WebServerGroup"
             },
-            "Cooldown": 60,
-            "ScalingAdjustment": "-1"
+            "Cooldown": 300,
+            "ScalingAdjustment": -1
          }
       },
       "CPUAlarmHigh": {
@@ -867,9 +856,9 @@
             "MetricName": "CPUUtilization",
             "Namespace": "AWS/EC2",
             "Statistic": "Average",
-            "Period": 60,
+            "Period": 300,
             "EvaluationPeriods": 2,
-            "Threshold": 5,
+            "Threshold": 10,
             "AlarmActions": [
                {
                   "Ref": "WebServerScaleUpPolicy"
@@ -893,9 +882,9 @@
             "MetricName": "CPUUtilization",
             "Namespace": "AWS/EC2",
             "Statistic": "Average",
-            "Period": 60,
+            "Period": 300,
             "EvaluationPeriods": 2,
-            "Threshold": 3,
+            "Threshold": 5,
             "AlarmActions": [
                {
                   "Ref": "WebServerScaleDownPolicy"
@@ -1283,7 +1272,7 @@
                   "DEPLOYMENT_FAILURE"
                ]
             },
-            "DeploymentConfigName": "CodeDeployDefault.AllAtOnce",
+            "DeploymentConfigName": "CodeDeployDefault.OneAtATime",
             "AutoScalingGroups": [
                {
                   "Ref": "WebServerGroup"
