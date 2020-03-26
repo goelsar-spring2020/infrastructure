@@ -795,12 +795,12 @@
          "Properties": {
             "AutoScalingGroupName": "asglaunchconfig",
             "Cooldown": 60,
-            "DesiredCapacity": "2",
+            "DesiredCapacity": 2,
             "LaunchConfigurationName": {
                "Ref": "asglaunchconfig"
             },
-            "MaxSize": "5",
-            "MinSize": "2",
+            "MaxSize": 5,
+            "MinSize": 2,
             "TargetGroupARNs": [
                {
                   "Ref": "TargetGroup"
@@ -846,7 +846,7 @@
                "Ref": "WebServerGroup"
             },
             "Cooldown": 60,
-            "ScalingAdjustment": "1"
+            "ScalingAdjustment": 1
          }
       },
       "WebServerScaleDownPolicy": {
@@ -867,7 +867,7 @@
             "MetricName": "CPUUtilization",
             "Namespace": "AWS/EC2",
             "Statistic": "Average",
-            "Period": 300,
+            "Period": 60,
             "EvaluationPeriods": 2,
             "Threshold": 5,
             "AlarmActions": [
@@ -893,7 +893,7 @@
             "MetricName": "CPUUtilization",
             "Namespace": "AWS/EC2",
             "Statistic": "Average",
-            "Period": 300,
+            "Period": 60,
             "EvaluationPeriods": 2,
             "Threshold": 3,
             "AlarmActions": [
