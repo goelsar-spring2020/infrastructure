@@ -16,10 +16,10 @@ aws cloudformation create-stack \
 --template-body file://./application.json \
 --parameters \
 ParameterKey=subnetcidrblock,ParameterValue=${subnet_cidr} \
-ParameterKey=VPCName,ParameterValue=${vpc_name} \
-ParameterKey=AWSRegion,ParameterValue=${aws_name} \
+ParameterKey=vpcName,ParameterValue=${vpc_name} \
+ParameterKey=awsRegion,ParameterValue=${aws_name} \
 ParameterKey=vpccidrblock,ParameterValue=${vpc_cidr} \
-ParameterKey=AMI,ParameterValue=${ami_name} \
+ParameterKey=ami,ParameterValue=${ami_name} \
 ParameterKey=keyname,ParameterValue=${key_name} \
 --capabilities CAPABILITY_NAMED_IAM \
 --region ${aws_name} \
