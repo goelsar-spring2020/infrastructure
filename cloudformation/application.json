@@ -126,6 +126,11 @@
          "Type":"String",
          "Default":"csye6225-message-topic",
          "Description":"AWS SNS Topic Name"
+      },
+      "emailAdd":{
+         "Type":"String",
+         "Default":"noreply@prod.sarthakgoel.me",
+         "Description":"Email Address for Sending emails"
       }
    },
    "Resources":{
@@ -1387,6 +1392,32 @@
             ]
          }
       },
+      "DynamoDatabase": {
+         "Type": "AWS::DynamoDB::Table",
+         "Properties": {
+            "TableName": "csye6225",
+            "AttributeDefinitions": [
+               {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+               }
+            ],
+            "KeySchema": [
+               {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+               }
+            ],
+            "ProvisionedThroughput": {
+               "ReadCapacityUnits": 10,
+               "WriteCapacityUnits": 5
+            },
+            "TimeToLiveSpecification": {
+               "AttributeName": "TTL",
+               "Enabled": "TRUE"
+            }
+         }
+      },
       "SNSService" : {
          "Type": "AWS::SNS::Topic",
          "Properties": {
@@ -1409,6 +1440,22 @@
             ]
          }
       },
+      "LambdaPermission": {
+         "Type": "AWS::Lambda::Permission",
+         "Properties": {
+            "Action": "lambda:*",
+            "FunctionName": {
+               "Fn::GetAtt": [
+                  "Lambdafunction",
+                  "Arn"
+               ]
+            },
+            "Principal": "sns.amazonaws.com",
+            "SourceArn": {
+               "Ref": "SNSService"
+            }
+         }
+      },
       "Lambdafunction" : {
          "Type" : "AWS::Lambda::Function",
          "Properties" : {
@@ -1416,13 +1463,16 @@
             "MemorySize": 512,
             "Environment": {
                "Variables": {
+                  "emailAddress": {
+                     "Ref": "emailAdd"
+                  }
                }
             },
             "Code": {
                "S3Bucket": {
                   "Ref" : "webappBucketName"
                },
-               "S3Key": "csye6255-webapp-181.zip"
+               "S3Key": "Lambda-1.0-SNAPSHOT.jar"
             },
             "Role": {
                "Fn::GetAtt": [
@@ -1430,8 +1480,9 @@
                   "Arn"
                ]
             },
-            "Handler": "csye6225.lambda.LogEvent::handleRequest",
-            "Runtime": "java11"
+            "Timeout": 90,
+            "Handler": "SendEmail::handleRequest",
+            "Runtime": "java8"
          }
       },
       "LambdaRole": {
