@@ -131,6 +131,10 @@
          "Type":"String",
          "Default":"noreply@prod.sarthakgoel.me",
          "Description":"Email Address for Sending emails"
+      },
+      "certARN":{
+         "Type":"String",
+         "Description":"certificate ARN"
       }
    },
    "Resources":{
@@ -547,12 +551,26 @@
             "DBSubnetGroupName":{
                "Ref":"DBSubnetGroup"
             },
+            "StorageEncrypted": true,
             "VPCSecurityGroups":[
                {
                   "Ref":"databaseSecurityGroup"
                }
             ],
+            "DBParameterGroupName": {
+               "Ref": "DBParameterGrp"
+            },
             "AllocatedStorage":"10"
+         }
+      },
+      "DBParameterGrp": {
+         "Type": "AWS::RDS::DBParameterGroup",
+         "Properties": {
+            "Description": "Database Parameter Group for RDS Instance ",
+            "Family": "MySQL5.7",
+            "Parameters": {
+               "performance_schema": "1"
+            }
          }
       },
       "csyeS3Bucket":{
@@ -636,6 +654,13 @@
       "Listener": {
          "Type": "AWS::ElasticLoadBalancingV2::Listener",
          "Properties": {
+            "Certificates":[
+               {
+                  "CertificateArn": {
+                     "Ref": "certARN"
+                  }
+               }
+            ],
             "LoadBalancerArn": {
                "Ref": "LoadBalancer"
             },
@@ -647,8 +672,8 @@
                   }
                }
             ],
-            "Port": 80,
-            "Protocol": "HTTP"
+            "Port": 443,
+            "Protocol": "HTTPS"
          }
       },
       "TargetGroup": {
