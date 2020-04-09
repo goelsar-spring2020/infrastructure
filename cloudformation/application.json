@@ -437,12 +437,6 @@
                   "FromPort": 8080,
                   "ToPort": 8080,
                   "CidrIp": "0.0.0.0/0"
-               },
-               {
-                  "IpProtocol": "tcp",
-                  "FromPort": 22,
-                  "ToPort": 22,
-                  "CidrIp": "0.0.0.0/0"
                }
             ]
          }
@@ -453,12 +447,6 @@
             "GroupDescription":"Security group for EC2",
             "GroupName":"csye6225-securitygroup",
             "SecurityGroupIngress":[
-               {
-                  "IpProtocol":"tcp",
-                  "FromPort":22,
-                  "ToPort":22,
-                  "CidrIp":"0.0.0.0/0"
-               },
                {
                   "IpProtocol":"tcp",
                   "FromPort":8080,
