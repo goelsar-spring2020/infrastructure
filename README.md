@@ -17,9 +17,19 @@
     Profile Name -- Name of the profile you wish to create stack in
 ```
 
+### Instruction to import the certificate to ACM
+```
+aws acm import-certificate --certificate file://Certificate.pem
+                                 --certificate-chain file://CertificateChain.pem
+                                 --private-key file://PrivateKey.pem
+```
+
 ### Instruction to create the Stack
 ```
   Go to the terminal in the specific directory ~/infrastructure/cloudformation
   Run the aws-cli command for cloud formation
-  Provide the above mentioned list of parameters
+
+  "aws cloudformation create-stack --stack-name [stack-name] --template-body file:///home/testuser/mytemplate.json --parameters ParameterKey=Parm1,ParameterValue=test1 ParameterKey=Parm2,ParameterValue=test2"
+
+  Provide the above mentioned list of parameters in the command
 ```
